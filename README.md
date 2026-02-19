@@ -20,6 +20,7 @@ Next.js + HeroUI を用いた週間スケジュール管理UIです。
 
 ## 🗂 Directory Structure
 
+```text
 src/features/calendar/
 ├── components/
 │ ├── WeekCalendarPage.tsx
@@ -36,6 +37,7 @@ src/features/calendar/
 │ └── date.ts
 └── config/
 └── eventStyleMap.ts
+```
 
 - `WeekCalendarPage`：メイン画面（レイアウト管理）
 - `SidePanel`：右サイドフォーム
@@ -51,9 +53,3 @@ npm run dev
 
 Open:
 http://localhost:3000/schedule
-
-📌 Notes
-
-デザインはFigmaを参考に実装
-状態管理はカスタムフックで整理
-UIはHeroUIを利用
