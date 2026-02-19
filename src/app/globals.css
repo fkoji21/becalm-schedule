@@ -1,0 +1,19 @@
+@import "tailwindcss";
+@layer theme, base, components, utilities;
+
+@plugin "./hero.ts";
+
+/* src/app から node_modules は ../../node_modules */
+@source "../**/*.{js,ts,jsx,tsx,mdx}";
+@source "../../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx,mdx}";
+
+@theme {
+  --color-primary: #1c7f86;
+  --color-primary-foreground: #ffffff;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
