@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Button, Input, Select, SelectItem, Checkbox  } from "@heroui/react";
 import { EventType, type EventType as EventTypeT } from "../types/event";
+import { type ScheduleEvent } from "../types/event";
 
 const fieldCN = {
     label: "text-slate-600 text-xs",
@@ -33,7 +34,7 @@ const INTERVIEW_LABELS = [
 
 function CardShell({ title, children }: { title?: string; children: React.ReactNode }) {
     return (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="h-full flex flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         {title && <div className="mb-3 text-sm font-semibold text-gray-700">{title}</div>}
         {children}
         </div>
@@ -55,16 +56,27 @@ function toHHMM(min: number) {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
 }
 
+function isoDate(d: Date) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+}
+
 export function EventFormCard({
     onAdd,
+    onDelete, 
     titleInputRef,
     draft,
     days,
+    selectedEvent,
     }: {
-    onAdd: (payload: { type: EventTypeT; label: string; startMin: number; endMin: number }) => void;
-    titleInputRef: React.RefObject<HTMLInputElement | null>;
-        draft?: { startMin: number; dayIndex: number } | null;
+        onAdd: (payload: { type: EventTypeT; label: string; startMin: number; endMin: number; isRecurring: boolean; date: string; }) => void;
+        onDelete?: (id: string) => void;
+        titleInputRef: React.RefObject<HTMLInputElement | null>;
+        draft?: { startMin: number; endMin: number; dayIndex: number } | null;
         days: Date[];
+        selectedEvent?: ScheduleEvent | null;
     }) {
     const [title, setTitle] = useState("");
     const [start, setStart] = useState("10:00");
@@ -84,32 +96,55 @@ export function EventFormCard({
             : "";
 
     const [isRecurring, setIsRecurring] = useState(false);
+    const initialDate = draft
+        ? isoDate(days[draft.dayIndex])
+        : isoDate(days[0]);
+    const [date, setDate] = useState<string>(initialDate);
 
     useEffect(() => {
         if (!draft) return;
 
-        const s = draft.startMin;
-        const e = s + 90;
+        setStart(toHHMM(draft.startMin));
+        setEnd(toHHMM(draft.endMin));
+        setDate(isoDate(days[draft.dayIndex]));
+    }, [draft]);
 
-        setStart(toHHMM(s));
-        setEnd(toHHMM(e));
-    }, [draft?.startMin]);
+    useEffect(() => {
+        if (!selectedEvent) return;
+
+        setType(selectedEvent.type);
+        setStart(toHHMM(selectedEvent.startMin));
+        setEnd(toHHMM(selectedEvent.endMin));
+        setIsRecurring(!!selectedEvent.isRecurring);
+        setDate(selectedEvent.date);
+        if (selectedEvent.type === EventType.MEETING) {
+            setInterviewLabel(selectedEvent.label as any);
+        } else {
+            setTitle(selectedEvent.label);
+        }
+    }, [selectedEvent]);
 
     const submit = () => {
         const s = toMin(start);
         const e = toMin(end);
         if (s == null || e == null) return;
         if (e <= s) return;
-
-        const label = isMeeting ? interviewLabel : title.trim() || "予定";
-        onAdd({ type, label, startMin: s, endMin: e });
+        let label: string;
+        if (type === EventType.SHIFT_REGULAR) {
+            label = "学習時間";
+        } else if (type === EventType.MEETING) {
+            label = interviewLabel;
+        } else {
+            label = title.trim() || "予定";
+        }
+        onAdd({ type, label, startMin: s, endMin: e, isRecurring, date,});
 
         setTitle("");
     };
 
     return (
         <CardShell title="予定">
-        <div className="space-y-3">
+        <div className="space-y-3 flex flex-col flex-1">
             <Select
             label="概要"
             selectedKeys={[type]}
@@ -124,13 +159,25 @@ export function EventFormCard({
             ))}
             </Select>
 
-            {isMeeting ? (
+            {/* 日付は常に表示 */}
+            <Input
+            label="日付"
+            value={date}
+            onValueChange={setDate}
+            variant="flat"
+            classNames={fieldCN}
+            />
+
+            {/* 面談のときだけ面談種別を追加表示 */}
+            {isMeeting && (
             <Select
                 label="面談種別"
                 selectedKeys={[interviewLabel]}
                 variant="flat"
                 onSelectionChange={(keys) => {
-                const k = Array.from(keys)[0] as (typeof INTERVIEW_LABELS)[number] | undefined;
+                const k = Array.from(keys)[0] as
+                    | (typeof INTERVIEW_LABELS)[number]
+                    | undefined;
                 if (k) setInterviewLabel(k);
                 }}
             >
@@ -138,14 +185,6 @@ export function EventFormCard({
                 <SelectItem key={l}>{l}</SelectItem>
                 ))}
             </Select>
-            ) : (
-            <Input
-            label="日付"
-            value={dateStr}
-            isReadOnly
-            variant="flat"
-            classNames={fieldCN}
-            />
             )}
 
             <div className="grid grid-cols-1 gap-3">
@@ -161,9 +200,19 @@ export function EventFormCard({
                 毎週繰り返す
                 </Checkbox>
 
-            <div className="mt-4 flex justify-end">
-            <Button className="w-w-1/2" color="primary" onPress={submit}>
-            更新
+            <div className="mt-auto flex justify-end gap-3">
+            {selectedEvent && onDelete && (
+                <Button
+                color="danger"
+                variant="flat"
+                onPress={() => onDelete(selectedEvent.id)}
+                >
+                削除
+                </Button>
+            )}
+
+            <Button color="primary" onPress={submit}>
+                更新
             </Button>
             </div>
         </div>

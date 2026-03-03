@@ -3,7 +3,12 @@ import { nanoid } from "nanoid";
 import { addDays, startOfWeek } from "../utils/date";
 import { type ScheduleEvent, type EventType } from "../types/event";
 
-const isoDate = (d: Date) => d.toISOString().slice(0, 10);
+const isoDate = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+};
 
 export function useWeekCalendar() {
     const [anchorDate, setAnchorDate] = useState<Date>(new Date());
@@ -29,10 +34,11 @@ export function useWeekCalendar() {
         },
     ]);
 
-    const [draft, setDraft] = useState({
-        dayIndex: 1,
-        startMin: 10 * 60,
-    });
+    const [draft, setDraft] = useState<{
+        dayIndex: number;
+        startMin: number;
+        endMin: number;
+    } | null>(null);
 
     const weekStart = useMemo(() => startOfWeek(anchorDate), [anchorDate]);
 
@@ -41,27 +47,45 @@ export function useWeekCalendar() {
         [weekStart]
     );
 
+    const deleteEvent = (id: string) => {
+        setEvents(prev => prev.filter(ev => ev.id !== id));
+    };
+
+    const [selectedEvent, setSelectedEvent] = useState<ScheduleEvent | null>(null);
+
     const addEvent = ({
         type,
         label,
         startMin,
         endMin,
+        isRecurring,
+        date,
     }: {
         type: EventType;
         label: string;
         startMin: number;
         endMin: number;
-    }) => {
+        isRecurring: boolean;
+        date: string;
+        }) => {
+        const dayIndex = days.findIndex(d => isoDate(d) === date);
         const newEv: ScheduleEvent = {
         id: nanoid(),
-        date: isoDate(days[draft.dayIndex]),
-        dayIndex: draft.dayIndex,
+        date,
+        dayIndex,
         startMin,
         endMin,
         type,
         label,
+        isRecurring,
         };
         setEvents((prev) => [...prev, newEv]);
+    };
+
+    const updateEvent = (updated: ScheduleEvent) => {
+        setEvents((prev) =>
+            prev.map((ev) => (ev.id === updated.id ? updated : ev))
+        );
     };
 
     return {
@@ -72,5 +96,9 @@ export function useWeekCalendar() {
         draft,
         setDraft,
         addEvent,
+        updateEvent,
+        deleteEvent,
+        selectedEvent,
+        setSelectedEvent,
     };
 }

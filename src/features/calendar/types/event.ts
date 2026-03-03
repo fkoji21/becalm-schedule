@@ -36,4 +36,5 @@ export type ScheduleEvent = {
     endMin: number;
     type: EventType;
     label: string;
+    isRecurring?: boolean;
 };
